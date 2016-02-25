@@ -1,5 +1,6 @@
 package com.coolweather.app.coolweather.activity;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -8,10 +9,12 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.coolweather.app.coolweather.R;
+import com.coolweather.app.coolweather.service.AutoUpdateService;
 import com.coolweather.app.coolweather.util.HttpCallbackListener;
 import com.coolweather.app.coolweather.util.HttpUtil;
 import com.coolweather.app.coolweather.util.Utility;
@@ -19,7 +22,7 @@ import com.coolweather.app.coolweather.util.Utility;
 /**
  * Created by cs on 2016/2/23.
  */
-public class WeatherActivity extends AppCompatActivity {
+public class WeatherActivity extends AppCompatActivity implements View.OnClickListener {
 
     private LinearLayout weatherInfoLayout;
     /*
@@ -36,6 +39,10 @@ public class WeatherActivity extends AppCompatActivity {
     private TextView temp2Text;
     //用于显示当前日期
     private TextView currentDateText;
+    //切换城市按钮
+    private Button switchCity;
+    //更新天气按钮
+    private Button refreshWeather;
 
     protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
@@ -49,6 +56,10 @@ public class WeatherActivity extends AppCompatActivity {
         temp1Text = (TextView)findViewById(R.id.temp1);
         temp2Text = (TextView)findViewById(R.id.temp2);
         currentDateText = (TextView)findViewById(R.id.current_date);
+        switchCity =(Button)findViewById(R.id.switch_city);
+        refreshWeather = (Button)findViewById(R.id.refresh_weather);
+        switchCity.setOnClickListener(this);
+        refreshWeather.setOnClickListener(this);
         String countyCode = getIntent().getStringExtra("county_code");
         if(!TextUtils.isEmpty(countyCode)){
             //有县级代号时就去查询天气
@@ -58,6 +69,26 @@ public class WeatherActivity extends AppCompatActivity {
         }else{
             //没有县级代号时就直接显示本地天气
             showWeather();
+        }
+    }
+
+    public void onClick(View v){
+        switch (v.getId()){
+            case R.id.switch_city:
+                Intent intent = new Intent(this,ChooseAreaActivity.class);
+                intent.putExtra("from_weather_activity", true);
+                startActivity(intent);
+                break;
+            case R.id.refresh_weather:
+                publishText.setText("同步中。。。");
+                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+                String weatherCode = prefs.getString("weather_code","");
+                if(!TextUtils.isEmpty(weatherCode)){
+                    queryWeatherInfo(weatherCode);
+                }
+                break;
+            default:
+                break;
         }
     }
     /*
@@ -71,8 +102,8 @@ public class WeatherActivity extends AppCompatActivity {
     *查询天气代号所对应的天气
     */
     private void queryWeatherInfo(String weatherCode){
-        String adress = "http://www.weather.com.cn/data/cityinfo/" + weatherCode +".html";
-        queryFromServer(adress,"weatherCode");
+        String address = "http://www.weather.com.cn/data/cityinfo/" + weatherCode +".html";
+        queryFromServer(address,"weatherCode");
     }
     /*
     *根据传入的地址和类型去向服务器查询天气代号或者天气信息
@@ -124,9 +155,11 @@ public class WeatherActivity extends AppCompatActivity {
         temp2Text.setText(prefs.getString("temp2",""));
         weatherDespText.setText(prefs.getString("weather_desp",""));
         publishText.setText("今天" + prefs.getString("publish_time","") + "发布");
-        currentDateText.setText(prefs.getString("current_date",""));
+        currentDateText.setText(prefs.getString("current_date", ""));
         weatherInfoLayout.setVisibility(View.VISIBLE);
         cityNameText.setVisibility(View.VISIBLE);
+        Intent intent = new Intent(this, AutoUpdateService.class);
+        startService(intent);
 
     }
 }
